@@ -111,7 +111,6 @@ plt.title('Model Performance Comparison')
 plt.ylim(0, 1)
 plt.xticks(rotation=45)
 plt.tight_layout()
-plt.tight_layout()
 plt.savefig(os.path.join(output_folder, 'model_performance_comparison.png'))
 plt.close()
 
