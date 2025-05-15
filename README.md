@@ -103,17 +103,17 @@ for name, model in models.items():
     print(classification_report(y_test, y_pred))
 
 
-    # Visualize the results
-    plt.figure(figsize=(8, 5))
-    sns.barplot(x=list(results.keys()), y=list(results.values()))
-    plt.ylabel('Accuracy')
-    plt.title('Model Performance Comparison')
-    plt.ylim(0, 1)
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_folder, 'model_performance_comparison.png'))
-    plt.close()
+# Visualize the results
+plt.figure(figsize=(8, 5))
+sns.barplot(x=list(results.keys()), y=list(results.values()))
+plt.ylabel('Accuracy')
+plt.title('Model Performance Comparison')
+plt.ylim(0, 1)
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.tight_layout()
+plt.savefig(os.path.join(output_folder, 'model_performance_comparison.png'))
+plt.close()
 
 
 
