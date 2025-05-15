@@ -15,7 +15,7 @@ from sklearn.svm import SVC
 
 
 # Load data diabates
-data = pd.read_csv('/Users/milanhavranek/Downloads/04-project/data/diabetes.csv')
+data = pd.read_csv('../04-project/data/diabetes.csv')
 
 # data preprocessing and visualisation
 # Display the first few rows of the dataset
