@@ -44,8 +44,8 @@ data[cols] = data[cols].replace(0, np.nan)
 data.fillna(data.median(), inplace=True)
 
 # Data path
-data_path = '/Users/milanhavranek/Downloads/04-project/data/diabetes.csv'
-output_folder = '/Users/milanhavranek/Downloads/04-project/plots'
+data_path = '../04-project/data/diabetes.csv'
+output_folder = '../04-project/plots'
 
 # create a folder for the plots
 os.makedirs(output_folder, exist_ok=True)
