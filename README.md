@@ -141,7 +141,7 @@ cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 logreg_l1 = LogisticRegression(penalty='l1', solver='liblinear', max_iter=1000)
 knn = KNeighborsClassifier()
 rf = RandomForestClassifier()
-svm = SVC(probability=True)
+svm = SVC(probability=True, kernel ="rbf")
 
 # Meta-Modelle
 voting = VotingClassifier(estimators=[
@@ -192,16 +192,25 @@ for name, model in models.items():
 # In DataFrame für Plot umwandeln
 results_df = pd.DataFrame(results).T
 
-# Balkendiagramm für Accuracy
+# Bar plot for Accuracy with value annotations
 plt.figure(figsize=(10, 5))
-sns.barplot(x=results_df.index, y=results_df['accuracy'])
+ax = sns.barplot(x=results_df.index, y=results_df['accuracy'])
+
+# Annotate each bar with the exact accuracy value
+for i, value in enumerate(results_df['accuracy']):
+    ax.text(i, value + 0.01, f"{value:.3f}", ha='center', va='bottom', fontsize=10)
+
+# Axis labels and plot settings
 plt.ylabel('Accuracy (5-Fold CV)')
-plt.title('Model Performance Comparison (inkl. Meta-Klassifikatoren)')
+plt.xlabel('Model')
+plt.title('Model Performance Comparison (incl. Meta-Classifiers)')
 plt.ylim(0, 1)
 plt.xticks(rotation=45)
 plt.tight_layout()
-plt.savefig(os.path.join(output_folder, 'model_cv_meta_comparison.png'))
-plt.close()
+
+# Save the figure with annotations
+plt.savefig(os.path.join(output_folder, 'model_cv_meta_comparison_annotated.png'))
+plt.show()
 
 
 # Selecting the best features for visualization (based on correlation)    SUPPORT VECTOR MACHINE
@@ -219,6 +228,8 @@ for feature in top2_features:
 # Result: Glucose and BMI have the highest correlation with the presence of diabetes.
 # Therefore, we use these two variables to visualize the decision boundary in 2D space.
 
+
+"""
 #  Visualizing SVM decision boundary (Glucose & BMI only)
 print("\n📈 SVM Decision Boundary (Glucose vs. BMI) is being plotted...")
 
@@ -288,3 +299,73 @@ plt.legend(handles=legend_elements, loc='upper left', frameon=True)
 plt.tight_layout()
 plt.savefig(os.path.join(output_folder, 'svm_decision_boundary_glucose_bmi.png'))
 plt.close()
+"""
+
+
+from matplotlib.colors import ListedColormap
+from matplotlib.patches import Patch
+from matplotlib.lines import Line2D
+import os
+
+def plot_decision_boundary(model, name, X_scaled, y, xx, yy, output_path):
+    """
+    Trains a model, predicts decision regions, plots and saves 2D decision boundary with legend.
+    """
+    # Modell trainieren und Entscheidung berechnen
+    model.fit(X_scaled, y)
+    Z = model.predict(np.c_[xx.ravel(), yy.ravel()])
+    Z = Z.reshape(xx.shape)
+
+    # Plot erstellen
+    plt.figure(figsize=(8, 6))
+    plt.contourf(xx, yy, Z, alpha=0.3, cmap=ListedColormap(['#4e79a7', '#59a14f']))
+
+    scatter = plt.scatter(X_scaled[:, 0], X_scaled[:, 1], c=y,
+                          cmap=plt.cm.coolwarm, edgecolors='k')
+
+    plt.xlabel('Glucose (scaled)')
+    plt.ylabel('BMI (scaled)')
+    plt.title(f'{name} – Decision Boundary (Glucose vs. BMI)')
+
+    # Legendenelemente definieren
+    legend_elements = [
+        Patch(facecolor='#4e79a7', edgecolor='k', label='Predicted: No Diabetes (blue area)'),
+        Patch(facecolor='#59a14f', edgecolor='k', label='Predicted: Diabetes (green area)'),
+        Line2D([0], [0], marker='o', color='w', label='True: No Diabetes (blue dot)',
+               markerfacecolor='blue', markeredgecolor='k', markersize=8),
+        Line2D([0], [0], marker='o', color='w', label='True: Diabetes (red dot)',
+               markerfacecolor='red', markeredgecolor='k', markersize=8)
+    ]
+
+    plt.legend(handles=legend_elements, loc='upper left', frameon=True)
+
+    plt.tight_layout()
+    filename = f"{name.lower().replace(' ', '_')}_decision_boundary_with_legend.png"
+    plt.savefig(os.path.join(output_path, filename))
+    plt.close()
+
+
+# Prepare data for plotting
+X_plot = data[['Glucose', 'BMI']].values
+y_plot = data['Outcome'].values
+
+scaler_plot = StandardScaler()
+X_plot_scaled = scaler_plot.fit_transform(X_plot)
+
+# Create meshgrid
+x_min, x_max = X_plot_scaled[:, 0].min() - 1, X_plot_scaled[:, 0].max() + 1
+y_min, y_max = X_plot_scaled[:, 1].min() - 1, X_plot_scaled[:, 1].max() + 1
+xx, yy = np.meshgrid(np.linspace(x_min, x_max, 200),
+                     np.linspace(y_min, y_max, 200))
+
+# Define models
+models_for_plot = {
+    'Logistic Regression': LogisticRegression(),
+    'K-Nearest Neighbors': KNeighborsClassifier(),
+    'Random Forest': RandomForestClassifier(),
+    'Support Vector Machine': SVC(kernel='rbf')
+}
+
+# Plot for each model
+for model_name, model in models_for_plot.items():
+    plot_decision_boundary(model, model_name, X_plot_scaled, y_plot, xx, yy, output_folder)
