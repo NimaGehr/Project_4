@@ -96,7 +96,7 @@ plt.close()
 
 # Outcome bar chart
 plt.figure(figsize=(6, 4))
-sns.countplot(x='Outcome', data=data, palette='Set2')
+sns.countplot(x='Outcome', data=data, hue='Outcome', palette='Set2', legend=False)
 plt.title('Distribution of Target Variable (Diabetes)')
 plt.xlabel('Outcome (0 = No Diabetes, 1 = Diabetes)')
 plt.ylabel('Count')
