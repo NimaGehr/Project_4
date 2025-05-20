@@ -19,11 +19,22 @@ from sklearn.svm import SVC
 data = pd.read_csv('../04-project/data/diabetes.csv')
 
 # Überblick
+print("First 5 rows of the dataset:")
 print(data.head())
+
+print("\nDataset shape (rows, columns):")
 print(data.shape)
+
+print("\nMissing values per column:")
 print(data.isnull().sum())
+
+print("\nNumber of duplicate rows:")
 print(data.duplicated().sum())
+
+print("\nData types of each column:")
 print(data.dtypes)
+
+print("\nNumber of unique values per column:")
 print(data.nunique())
 
 # Null-Werte als NaN ersetzen
@@ -369,3 +380,4 @@ models_for_plot = {
 # Plot for each model
 for model_name, model in models_for_plot.items():
     plot_decision_boundary(model, model_name, X_plot_scaled, y_plot, xx, yy, output_folder)
+
