@@ -174,6 +174,10 @@ scoring = {
     'f1': make_scorer(f1_score)
 }
 
+# Skaliertes X für cross_validate
+scaler_full = StandardScaler()
+X_scaled = scaler_full.fit_transform(X)
+
 # Ergebnisse sammeln
 results = {}
 
