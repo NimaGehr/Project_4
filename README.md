@@ -182,7 +182,7 @@ X_scaled = scaler_full.fit_transform(X)
 results = {}
 
 for name, model in models.items():
-    print(f'\n🔍 {name}')
+    print(f'\n {name}')
     scores = cross_validate(model, X_scaled, y, cv=cv, scoring=scoring)
     avg_scores = {metric: np.mean(scores[f'test_{metric}']) for metric in scoring}
     results[name] = avg_scores
@@ -212,14 +212,14 @@ correlations = data.corr(numeric_only=True)['Outcome'].abs().sort_values(ascendi
 # Select the two most correlated features (excluding Outcome itself)
 top2_features = correlations.index[1:3].tolist()  # [0] is 'Outcome'
 
-print("\n🔎 Correlation analysis – strongest predictors for Outcome:")
+print("\n Correlation analysis – strongest predictors for Outcome:")
 for feature in top2_features:
     print(f"{feature}: {correlations[feature]:.3f}")
 
 # Result: Glucose and BMI have the highest correlation with the presence of diabetes.
 # Therefore, we use these two variables to visualize the decision boundary in 2D space.
 
-# 🔍 Visualizing SVM decision boundary (Glucose & BMI only)
+#  Visualizing SVM decision boundary (Glucose & BMI only)
 print("\n📈 SVM Decision Boundary (Glucose vs. BMI) is being plotted...")
 
 # Select two features
@@ -245,12 +245,46 @@ Z = Z.reshape(xx.shape)
 
 # Create plot
 plt.figure(figsize=(8, 6))
-plt.contourf(xx, yy, Z > 0, alpha=0.3)
-plt.contour(xx, yy, Z, levels=[-1, 0, 1], colors='k', linestyles=['--', '-', '--'])
-plt.scatter(X_svm_scaled[:, 0], X_svm_scaled[:, 1], c=y_svm, cmap='coolwarm', edgecolors='k')
+
+# Background decision regions
+plt.contourf(xx, yy, Z > 0, alpha=0.3, colors=['#4e79a7', '#59a14f'])
+
+# Decision boundary and margins
+plt.contour(xx, yy, Z, levels=[-1, 0, 1],
+            colors='k', linestyles=['--', '-', '--'])
+
+# Scatter points (true labels)
+scatter = plt.scatter(
+    X_svm_scaled[:, 0],
+    X_svm_scaled[:, 1],
+    c=y_svm,
+    cmap=plt.cm.coolwarm,
+    edgecolors='k'
+)
+
+# Labels and title
 plt.xlabel(f'{svm_features[0]} (scaled)')
 plt.ylabel(f'{svm_features[1]} (scaled)')
 plt.title(f'SVM Decision Boundary – {svm_features[0]} vs. {svm_features[1]}')
+
+# Custom legend
+from matplotlib.patches import Patch
+from matplotlib.lines import Line2D
+
+legend_elements = [
+    Patch(facecolor='#4e79a7', edgecolor='k', label='Predicted: No Diabetes (blue area)'),
+    Patch(facecolor='#59a14f', edgecolor='k', label='Predicted: Diabetes (green area)'),
+    Line2D([0], [0], marker='o', color='w', label='True: No Diabetes (blue dot)',
+           markerfacecolor='blue', markeredgecolor='k', markersize=8),
+    Line2D([0], [0], marker='o', color='w', label='True: Diabetes (red dot)',
+           markerfacecolor='red', markeredgecolor='k', markersize=8),
+    Line2D([0], [0], color='black', lw=2, label='Decision boundary (model = 0)'),
+    Line2D([0], [0], color='black', linestyle='--', lw=1.5, label='SVM margins (±1)')
+]
+
+plt.legend(handles=legend_elements, loc='upper left', frameon=True)
+
+# Save plot
 plt.tight_layout()
 plt.savefig(os.path.join(output_folder, 'svm_decision_boundary_glucose_bmi.png'))
 plt.close()
