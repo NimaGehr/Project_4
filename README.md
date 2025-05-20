@@ -4,8 +4,10 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import os
+import matplotlib.ticker as ticker
 
 from sklearn.model_selection import StratifiedKFold, cross_validate
+from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import make_scorer, accuracy_score, precision_score, recall_score, f1_score
@@ -33,34 +35,104 @@ data.fillna(data.median(), inplace=True)
 output_folder = '../04-project/plots'
 os.makedirs(output_folder, exist_ok=True)
 
-# Boxplots
+# create a dictionary for the units of each feature
+units = {
+    'Pregnancies': 'count',
+    'Glucose': 'mg/dL',
+    'BloodPressure': 'mm Hg',
+    'SkinThickness': 'mm',
+    'Insulin': 'U/mL',
+    'BMI': 'kg/m²',
+    'DiabetesPedigreeFunction': 'index',
+    'Age': 'years'
+}
+
+# Check for outliers (Boxplot)
 def check_outliers(data):
     for column in data.columns:
+        if column in ['Outcome', 'Insulin']:
+            continue  # Skip binary target and handle Insulin separately
+
         if data[column].dtype != 'object':
             plt.figure(figsize=(10, 5))
             sns.boxplot(x=data[column])
+
+            # Add unit to x-axis label
+            unit = units.get(column, '')
+            xlabel = f"{column} ({unit})" if unit else column
+            plt.xlabel(xlabel)
+
+            # Set integers on the x-axis (e.g., for Pregnancies)
+            if column == 'Pregnancies':
+                ax = plt.gca()  # Aktuelle Achse holen
+                ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+
             plt.title(f'Boxplot of {column}')
             plt.tight_layout()
             plt.savefig(os.path.join(output_folder, f'boxplot_{column}.png'))
             plt.close()
 check_outliers(data)
 
-# Korrelationsmatrix
-correlation_matrix = data.corr()
-plt.figure(figsize=(10, 8))
-sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm')
-plt.title('Correlation Matrix')
+# Additional plots for Insulin (Histogram + Log Boxplot)
+# 1. Histogram (0–400)
+plt.figure(figsize=(10, 5))
+sns.histplot(data['Insulin'], bins=50, kde=True)
+plt.xlim(0, 400)
+plt.xlabel('Insulin (mu U/mL)')
+plt.title('Distribution of Insulin (0–400)')
 plt.tight_layout()
-plt.savefig(os.path.join(output_folder, 'correlation_matrix.png'))
+plt.savefig(os.path.join(output_folder, 'insulin_histogram_zoomed.png'))
+plt.close()
+
+# 2. Boxplot with log scale
+plt.figure(figsize=(10, 5))
+sns.boxplot(x=data['Insulin'])
+plt.xscale('log')
+plt.xlabel('Insulin (mu U/mL, log scale)')
+plt.title('Boxplot of Insulin (Log Scale)')
+plt.tight_layout()
+plt.savefig(os.path.join(output_folder, 'insulin_boxplot_log.png'))
+plt.close()
+
+# Outcome bar chart
+plt.figure(figsize=(6, 4))
+sns.countplot(x='Outcome', data=data, palette='Set2')
+plt.title('Distribution of Target Variable (Diabetes)')
+plt.xlabel('Outcome (0 = No Diabetes, 1 = Diabetes)')
+plt.ylabel('Count')
+plt.tight_layout()
+plt.savefig(os.path.join(output_folder, 'outcome_distribution.png'))
+plt.close()
+
+
+# Correlation of all features with 'Outcome' (considered individually)
+outcome_corr = data.corr()['Outcome'].drop('Outcome').sort_values(ascending=False)
+
+# title and save the plot
+print("Correlation of all features with 'Diabetes':")
+print(outcome_corr)
+
+# Visualization as a bar chart
+plt.figure(figsize=(8, 5))
+sns.barplot(x=outcome_corr.values, y=outcome_corr.index)
+plt.title('Correlation of all Features with Diabetes')
+plt.xlabel('correlation coefficient')
+plt.ylabel('Features')
+plt.tight_layout()
+plt.savefig(os.path.join(output_folder, 'outcome_correlation_only.png'))
 plt.close()
 
 # Features und Ziel
 X = data.drop('Outcome', axis=1)
 y = data['Outcome']
 
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
 # Skalierung
 scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
 
 # 5-fache Cross-Validation
 cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
