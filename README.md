@@ -1,56 +1,39 @@
-# Project_4
+# Project_4 – mit Voting & Stacking (Meta-Klassifikatoren)
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import seaborn as sns
 import os
 
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import StratifiedKFold, cross_validate
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from sklearn.metrics import make_scorer, accuracy_score, precision_score, recall_score, f1_score
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, VotingClassifier, StackingClassifier
 from sklearn.svm import SVC
 
-
-# Load data diabates
+# Load data
 data = pd.read_csv('../04-project/data/diabetes.csv')
 
-# data preprocessing and visualisation
-# Display the first few rows of the dataset
+# Überblick
 print(data.head())
-
-# Display the shape of the dataset
 print(data.shape)
-
-# Check for missing values
 print(data.isnull().sum())
-
-# Check for duplicates
 print(data.duplicated().sum())
-
-# Check for data types
 print(data.dtypes)
-
-# Check for unique values in each column
 print(data.nunique())
 
-# Replace zeros with NaN where 0 is not physiologically meaningful
+# Null-Werte als NaN ersetzen
 cols = ['Glucose', 'BloodPressure', 'SkinThickness', 'Insulin', 'BMI']
 data[cols] = data[cols].replace(0, np.nan)
-
-# Fill missing values with the median of each column
 data.fillna(data.median(), inplace=True)
 
-# Data path
-data_path = '../04-project/data/diabetes.csv'
+# Pfad für Plots
 output_folder = '../04-project/plots'
-
-# create a folder for the plots
 os.makedirs(output_folder, exist_ok=True)
 
-# Check for outliers
+# Boxplots
 def check_outliers(data):
     for column in data.columns:
         if data[column].dtype != 'object':
@@ -62,7 +45,7 @@ def check_outliers(data):
             plt.close()
 check_outliers(data)
 
-# Check for correlation
+# Korrelationsmatrix
 correlation_matrix = data.corr()
 plt.figure(figsize=(10, 8))
 sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm')
@@ -71,48 +54,75 @@ plt.tight_layout()
 plt.savefig(os.path.join(output_folder, 'correlation_matrix.png'))
 plt.close()
 
-
-# Split the data into features and target variable
+# Features und Ziel
 X = data.drop('Outcome', axis=1)
 y = data['Outcome']
 
-# Split the data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-# Scale the features
+# Skalierung
 scaler = StandardScaler()
-X_train = scaler.fit_transform(X_train)
-X_test = scaler.transform(X_test)
+X_scaled = scaler.fit_transform(X)
 
-# Define models
+# 5-fache Cross-Validation
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+# Basis-Modelle
+logreg_l1 = LogisticRegression(penalty='l1', solver='liblinear', max_iter=1000)
+knn = KNeighborsClassifier()
+rf = RandomForestClassifier()
+svm = SVC(probability=True)
+
+# Meta-Modelle
+voting = VotingClassifier(estimators=[
+    ('knn', knn),
+    ('rf', rf),
+    ('svm', svm)
+], voting='soft')
+
+stacking = StackingClassifier(estimators=[
+    ('knn', knn),
+    ('rf', rf),
+    ('svm', svm)
+], final_estimator=logreg_l1)
+
+# Modelle definieren
 models = {
-    'Logistic Regression': LogisticRegression(),
-    'K-Nearest Neighbors': KNeighborsClassifier(),
-    'Random Forest': RandomForestClassifier(),
-    'Support Vector Machine': SVC() 
-    }
+    'L1 Logistic Regression': logreg_l1,
+    'K-Nearest Neighbors': knn,
+    'Random Forest': rf,
+    'Support Vector Machine': svm,
+    'Voting Classifier': voting,
+    'Stacking Classifier': stacking
+}
+
+# Bewertungsmetriken
+scoring = {
+    'accuracy': make_scorer(accuracy_score),
+    'precision': make_scorer(precision_score),
+    'recall': make_scorer(recall_score),
+    'f1': make_scorer(f1_score)
+}
+
+# Ergebnisse sammeln
 results = {}
 
-# Train and evaluate each model
 for name, model in models.items():
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
-    acc = accuracy_score(y_test, y_pred)
-    results[name] = acc
-    print(f'\n{name} Accuracy: {acc:.2f}')
-    print(classification_report(y_test, y_pred))
+    print(f'\n🔍 {name}')
+    scores = cross_validate(model, X_scaled, y, cv=cv, scoring=scoring)
+    avg_scores = {metric: np.mean(scores[f'test_{metric}']) for metric in scoring}
+    results[name] = avg_scores
+    for metric, value in avg_scores.items():
+        print(f'{metric.capitalize():<10}: {value:.3f}')
 
+# In DataFrame für Plot umwandeln
+results_df = pd.DataFrame(results).T
 
-# Visualize the results
-plt.figure(figsize=(8, 5))
-sns.barplot(x=list(results.keys()), y=list(results.values()))
-plt.ylabel('Accuracy')
-plt.title('Model Performance Comparison')
+# Balkendiagramm für Accuracy
+plt.figure(figsize=(10, 5))
+sns.barplot(x=results_df.index, y=results_df['accuracy'])
+plt.ylabel('Accuracy (5-Fold CV)')
+plt.title('Model Performance Comparison (inkl. Meta-Klassifikatoren)')
 plt.ylim(0, 1)
 plt.xticks(rotation=45)
 plt.tight_layout()
-plt.savefig(os.path.join(output_folder, 'model_performance_comparison.png'))
+plt.savefig(os.path.join(output_folder, 'model_cv_meta_comparison.png'))
 plt.close()
-
-
-
